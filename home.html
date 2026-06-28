@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Netflix</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ── PROFILES ── -->
+<div id="profiles">
+  <div class="nf-logo-top">NETFLIX</div>
+  <h1>Who's watching?</h1>
+  <div class="profile-grid" id="profile-grid"></div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app">
+  <audio id="bg-music" src="media/bg.mp3" loop></audio>
+  <nav id="navbar">
+    <a class="nav-logo" href="#">NETFLIX</a>
+    <ul class="nav-links">
+      <li><a href="#">Home</a></li>
+      <li><a href="#">Our Story</a></li>
+      <li><a href="#">Favourites</a></li>
+    </ul>
+    <div class="nav-right">
+      <div class="nav-profile-icon" id="nav-profile-icon"></div>
+    </div>
+  </nav>
+
+  <div id="hero">
+    <div id="hero-bg"></div>
+    <video id="hero-video-el" autoplay muted loop playsinline></video>
+    <div id="hero-overlay"></div>
+    <div class="hero-info">
+      <div class="hero-tag">SERIES</div>
+      <div class="hero-title" id="hero-title"></div>
+      <div class="hero-desc" id="hero-desc"></div>
+      <div class="hero-btns">
+        <button class="btn-play" id="hero-play-btn">▶ Play</button>
+        <button class="btn-info" id="hero-info-btn">ⓘ More Info</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="rows" id="rows"></div>
+</div>
+
+<!-- ── MODAL ── -->
+<div id="modal">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close">✕</button>
+    <div class="modal-media">
+      <video id="modal-video" autoplay controls playsinline></video>
+      <img id="modal-img" alt=""/>
+      <div class="modal-media-grad"></div>
+    </div>
+    <div class="modal-info">
+      <button class="modal-play" id="modal-play-btn">▶ Play</button>
+      <div class="modal-title" id="modal-title"></div>
+      <div class="modal-meta">
+        <span class="modal-match" id="modal-match"></span>
+        <span id="modal-date"></span>
+      </div>
+      <div class="modal-desc" id="modal-desc"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FULLSCREEN PLAYER ── -->
+<div id="player">
+  <div id="player-spinner">
+    <svg viewBox="0 0 50 50">
+      <circle cx="25" cy="25" r="20" fill="none" stroke="#E50914" stroke-width="3" stroke-dasharray="80 40"/>
+    </svg>
+  </div>
+  <video id="player-video" playsinline></video>
+  <div id="player-controls">
+    <div id="player-top">
+      <button id="player-back">←</button>
+      <span id="player-title-bar"></span>
+    </div>
+    <div id="player-bottom">
+      <input type="range" id="player-seek" value="0" min="0" step="0.1"/>
+      <div id="player-btns">
+        <button id="player-play-btn">⏸</button>
+        <button id="player-rewind">↺ 10</button>
+        <button id="player-forward">↻ 10</button>
+        <button id="player-mute">🔊</button>
+        <span id="player-time">0:00 / 0:00</span>
+        <button id="player-fs" style="margin-left:auto">⛶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="assets.js"></script>
+<script>
+// ── Build profiles from assets.js ──
+const profileGrid = document.getElementById('profile-grid');
+
+window.ASSETS.profiles.forEach(p => {
+  const card = document.createElement('div');
+  card.className = 'profile-card';
+  card.innerHTML = `
+    <div class="profile-avatar" style="background:${p.color}30">
+      ${p.avatar ? `<img src="${p.avatar}" alt="${p.name}" onerror="this.style.display='none'">` : ''}
+      <span ${p.avatar ? 'style="display:none"' : ''}>${p.emoji}</span>
+    </div>
+    <div class="profile-name">${p.name}</div>`;
+  card.addEventListener('click', () => selectProfile(p));
+  profileGrid.appendChild(card);
+});
+
+function selectProfile(profile) {
+  document.getElementById('bg-music').play();
+  const navIcon = document.getElementById('nav-profile-icon');
+  navIcon.innerHTML = profile.avatar
+    ? `<img src="${profile.avatar}" alt="${profile.name}" onerror="this.textContent='${profile.emoji}'">`
+    : profile.emoji;
+  document.getElementById('profiles').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.display = 'block';
+  app.style.opacity = '0';
+  setTimeout(() => { app.style.transition = 'opacity 0.6s'; app.style.opacity = '1'; }, 10);
+  buildApp();
+}
+
+// ── Nav scroll solid ──
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('solid', window.scrollY > 60);
+});
+
+// ── Build hero + rows ──
+function buildApp() {
+  buildHero();
+  buildRows();
+}
+
+function buildHero() {
+  const h = window.ASSETS.hero;
+  document.getElementById('hero-title').textContent = h.title;
+  document.getElementById('hero-desc').textContent = h.description;
+
+  const bg = document.getElementById('hero-bg');
+  if (h.backgroundImage) {
+    bg.style.backgroundImage = `url('${h.backgroundImage}')`;
+  } else {
+    bg.style.background = 'linear-gradient(135deg,#1a0000 0%,#3d0000 50%,#141414 100%)';
+    bg.innerHTML = `<div style="position:absolute;inset:0;display:flex;align-items:center;
+      justify-content:flex-end;padding:4%;opacity:0.07;font-size:220px">${h.placeholderEmoji}</div>`;
+  }
+
+  const hv = document.getElementById('hero-video-el');
+  if (h.heroVideo) { hv.src = h.heroVideo; hv.style.opacity = '1'; }
+
+  let fi = null;
+  for (const row of window.ASSETS.rows) {
+    for (const item of row.items) { if (item.video) { fi = item; break; } }
+    if (fi) break;
+  }
+  document.getElementById('hero-play-btn').onclick = () => {
+    openPlayer(fi || window.ASSETS.rows[0]?.items[0]);
+  };
+  document.getElementById('hero-info-btn').onclick = () => {
+    openModal(window.ASSETS.rows[0]?.items[0]);
+  };
+}
+
+function buildRows() {
+  const container = document.getElementById('rows');
+  container.innerHTML = '';
+  window.ASSETS.rows.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'row';
+    rowEl.innerHTML = `<div class="row-title">${row.title}</div>`;
+
+    const scroll = document.createElement('div');
+    scroll.className = 'row-scroll';
+    row.items.forEach(item => scroll.appendChild(createCard(item)));
+
+    const leftArrow = document.createElement('button');
+    leftArrow.className = 'row-arrow left hidden';
+    leftArrow.innerHTML = '&#8249;';
+    leftArrow.addEventListener('click', () => {
+      scroll.scrollBy({ left: -460, behavior: 'smooth' });
+    });
+
+    const rightArrow = document.createElement('button');
+    rightArrow.className = 'row-arrow right';
+    rightArrow.innerHTML = '&#8250;';
+    rightArrow.addEventListener('click', () => {
+      scroll.scrollBy({ left: 460, behavior: 'smooth' });
+    });
+
+    scroll.addEventListener('scroll', () => {
+      leftArrow.classList.toggle('hidden', scroll.scrollLeft <= 0);
+      rightArrow.classList.toggle('hidden', scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 10);
+    });
+
+    rowEl.appendChild(leftArrow);
+    rowEl.appendChild(scroll);
+    rowEl.appendChild(rightArrow);
+    container.appendChild(rowEl);
+  });
+}
+
+function createCard(item) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    ${item.thumb
+      ? `<img class="card-thumb" src="${item.thumb}" alt="${item.title}" loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+         <div class="card-thumb-placeholder" style="display:none">${item.emoji || '🎬'}</div>`
+      : `<div class="card-thumb-placeholder">${item.emoji || '🎬'}</div>`
+    }
+    ${item.video ? `<video class="card-video" src="${item.video}" muted loop playsinline preload="none"></video>` : ''}
+    <div class="card-overlay">
+      <div class="card-icons">
+        <div class="card-icon">▶</div>
+        <div class="card-icon" style="color:#e50914">♥</div>
+      </div>
+      <div class="card-label">${item.title}</div>
+    </div>`;
+
+  if (item.video) {
+    const vid = card.querySelector('.card-video');
+    card.addEventListener('mouseenter', () => { vid.classList.add('loaded'); vid.play().catch(()=>{}); });
+    card.addEventListener('mouseleave', () => { vid.pause(); vid.currentTime = 0; });
+  }
+  card.addEventListener('click', () => openModal(item));
+  return card;
+}
+
+// ── Modal ──
+function openModal(item) {
+  if (!item) return;
+  document.getElementById('bg-music').pause();
+  const mv = document.getElementById('modal-video');
+  const mi = document.getElementById('modal-img');
+  document.getElementById('modal-title').textContent = item.title;
+  document.getElementById('modal-desc').textContent = item.description || '';
+  document.getElementById('modal-match').textContent = item.love ? `${item.love} Love` : '';
+  document.getElementById('modal-date').textContent = item.date || '';
+
+  if (item.video) {
+    mv.src = item.video; mv.style.display = 'block'; mi.style.display = 'none';
+    mv.play().catch(()=>{});
+  } else if (item.thumb) {
+    mv.style.display = 'none'; mi.style.display = 'block'; mi.src = item.thumb;
+  } else {
+    mv.style.display = 'none'; mi.style.display = 'none';
+  }
+  document.getElementById('modal-play-btn').onclick = () => {
+    closeModal();
+    openPlayer(item);
+  };
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('bg-music').play();
+  const mv = document.getElementById('modal-video');
+  document.getElementById('modal').classList.remove('open');
+  mv.pause(); mv.src = '';
+  document.body.style.overflow = '';
+}
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+
+// ── Fullscreen Player ──
+const player        = document.getElementById('player');
+const playerVideo   = document.getElementById('player-video');
+const playerSpinner = document.getElementById('player-spinner');
+const playerSeek    = document.getElementById('player-seek');
+const playerTime    = document.getElementById('player-time');
+const playerPlayBtn = document.getElementById('player-play-btn');
+const playerTitle   = document.getElementById('player-title-bar');
+
+function fmt(s) {
+  if (isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60).toString().padStart(2, '0');
+  return `${m}:${sec}`;
+}
+
+function openPlayer(item) {
+  if (!item || !item.video) return;
+  document.getElementById('bg-music').pause();
+  playerTitle.textContent = item.title;
+  playerVideo.src = item.video;
+  playerVideo.classList.remove('ready');
+  playerSpinner.classList.remove('hidden');
+  playerPlayBtn.textContent = '⏸';
+  player.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  playerVideo.play().catch(() => {});
+}
+
+playerVideo.addEventListener('canplay', () => {
+  playerVideo.classList.add('ready');
+  playerSpinner.classList.add('hidden');
+  playerSeek.max = playerVideo.duration;
+});
+
+playerVideo.addEventListener('timeupdate', () => {
+  playerSeek.value = playerVideo.currentTime;
+  playerTime.textContent = `${fmt(playerVideo.currentTime)} / ${fmt(playerVideo.duration)}`;
+});
+
+playerSeek.addEventListener('input', () => {
+  playerVideo.currentTime = playerSeek.value;
+});
+
+playerPlayBtn.addEventListener('click', () => {
+  if (playerVideo.paused) { playerVideo.play(); playerPlayBtn.textContent = '⏸'; }
+  else { playerVideo.pause(); playerPlayBtn.textContent = '▶'; }
+});
+
+document.getElementById('player-rewind').addEventListener('click', () => {
+  playerVideo.currentTime = Math.max(0, playerVideo.currentTime - 10);
+});
+document.getElementById('player-forward').addEventListener('click', () => {
+  playerVideo.currentTime = Math.min(playerVideo.duration, playerVideo.currentTime + 10);
+});
+document.getElementById('player-mute').addEventListener('click', () => {
+  playerVideo.muted = !playerVideo.muted;
+  document.getElementById('player-mute').textContent = playerVideo.muted ? '🔇' : '🔊';
+});
+document.getElementById('player-fs').addEventListener('click', () => {
+  if (player.requestFullscreen) player.requestFullscreen();
+});
+document.getElementById('player-back').addEventListener('click', () => {
+  playerVideo.pause(); playerVideo.src = '';
+  player.classList.remove('open');
+  document.body.style.overflow = '';
+  document.getElementById('bg-music').play();
+});
+
+document.addEventListener('keydown', e => {
+  if (!player.classList.contains('open')) return;
+  if (e.key === 'Escape') document.getElementById('player-back').click();
+  if (e.key === ' ') { e.preventDefault(); playerPlayBtn.click(); }
+  if (e.key === 'ArrowLeft') playerVideo.currentTime -= 10;
+  if (e.key === 'ArrowRight') playerVideo.currentTime += 10;
+});
+</script>
+</body>
+</html>
